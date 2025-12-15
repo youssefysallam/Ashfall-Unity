@@ -16,6 +16,12 @@ public class GameManager : MonoBehaviour
     public float oxygenDecayIncreasePerDay = 0.2f;
 
     private PlayerStats playerStats;
+    
+    void Start()
+    {
+        if (SceneManager.GetActiveScene().name == "Boot")
+            SceneManager.LoadScene("Gameplay_Overworld");
+    }
 
     void Awake()
     {
@@ -37,6 +43,8 @@ public class GameManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        if (scene.name == "Boot") return;
+
         if (playerStats != null)
         {
             playerStats.OnPlayerDied -= HandlePlayerDeath;
@@ -83,7 +91,7 @@ public class GameManager : MonoBehaviour
         dayTimer = 0f;
 
         //Temp reload scene
-        SceneManager.LoadScene("MainScene");
+        SceneManager.LoadScene("Gameplay_Overworld");
         //Preserve unlocks here later
     }
 }
