@@ -338,8 +338,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   dayLengthSeconds: 120
-  hungerDecayIncreasePerDay: 0.2
+  hungerDecayIncreasePerDay: 100
   oxygenDecayIncreasePerDay: 0.2
+  deathUI: {fileID: 0}
 --- !u!4 &1092116645
 Transform:
   m_ObjectHideFlags: 0

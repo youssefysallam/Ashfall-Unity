@@ -10,6 +10,9 @@ public class Pickup : MonoBehaviour
     public Pickuptype type;
     public float amount = 25f;
     public float rotateSpeed = 60f;
+    public PickupSpawnManager spawnManager;
+    public string spawnId;
+
 
     void Update()
     {
@@ -25,6 +28,12 @@ public class Pickup : MonoBehaviour
             stats.AddFood(amount);
         else if (type == Pickuptype.Oxygen)
             stats.AddOxygen(amount);
+        
+        if (spawnManager != null && !string.IsNullOrEmpty(spawnId))
+        {
+            spawnManager.MarkConsumed(spawnId);
+        }
+
 
         Destroy(gameObject);
     }

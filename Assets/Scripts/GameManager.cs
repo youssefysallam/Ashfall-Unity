@@ -16,6 +16,8 @@ public class GameManager : MonoBehaviour
     public float oxygenDecayIncreasePerDay = 0.2f;
 
     private PlayerStats playerStats;
+    [SerializeField] private DeathUI deathUI;
+    private bool isDead = false;
     
     void Start()
     {
@@ -46,20 +48,22 @@ public class GameManager : MonoBehaviour
         if (scene.name == "Boot") return;
 
         if (playerStats != null)
-        {
             playerStats.OnPlayerDied -= HandlePlayerDeath;
-        }
 
         playerStats = FindFirstObjectByType<PlayerStats>();
 
         if (playerStats != null)
-        {
             playerStats.OnPlayerDied += HandlePlayerDeath;
-        } else
-        {
+        else
             Debug.Log("No PlayerStats found in scene " + scene.name);
-        }
+
+        deathUI = FindFirstObjectByType<DeathUI>();
+        if (deathUI != null) deathUI.Hide();
+
+        isDead = false;
+        Time.timeScale = 1f;
     }
+
 
     void Update()
     {
@@ -86,12 +90,16 @@ public class GameManager : MonoBehaviour
 
     void HandlePlayerDeath()
     {
+        if (isDead) return;
+        isDead = true;
+
         Debug.Log("Run ended. Resetting to Day 1.");
         CurrentDay = 1;
         dayTimer = 0f;
 
-        //Temp reload scene
-        SceneManager.LoadScene("Gameplay_Overworld");
-        //Preserve unlocks here later
+        if (deathUI != null)
+            deathUI.Show(CurrentDay);
+        else
+            SceneManager.LoadScene("Gameplay_Overworld");
     }
 }
