@@ -24,7 +24,11 @@ public class ThirdPersonCamera : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
+
+        if (target != null)
+            yaw = target.eulerAngles.y; // start aligned with player facing
     }
+
 
     void LateUpdate()
     {

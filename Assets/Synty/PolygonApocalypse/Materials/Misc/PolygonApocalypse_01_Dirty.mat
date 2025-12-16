@@ -50,6 +50,8 @@ Material:
     m_Ints: []
     m_Floats:
     - _Albedo_Tiling: 1
+    - _BUILTIN_QueueControl: 0
+    - _BUILTIN_QueueOffset: 0
     - _BumpScale: 1
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
@@ -81,6 +83,7 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
   m_BuildTextureStacks: []
+  m_AllowLocking: 1
 --- !u!114 &1323352846320984377
 MonoBehaviour:
   m_ObjectHideFlags: 11
