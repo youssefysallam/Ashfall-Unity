@@ -343,7 +343,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &418618686
 RectTransform:
   m_ObjectHideFlags: 0
@@ -5741,9 +5741,11 @@ MonoBehaviour:
   target: {fileID: 824063657}
   distance: 0.1
   height: 0
+  shoulderOffset: {x: 0.6, y: 0, z: 0}
   mouseSensitivity: 150
   minPitch: -20
   maxPitch: 60
+  followSmooth: 12
 --- !u!4 &771027675
 Transform:
   m_ObjectHideFlags: 0
@@ -5949,11 +5951,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMovement
   moveSpeed: 5
-  gravity: -9.81
+  gravity: -16
   jumpHeight: 1.5
   rotationSpeed: 10
   sprintMultiplier: 1.8
   cameraTransform: {fileID: 771027675}
+  airControl: 0.2
+  groundAccel: 25
+  airAccel: 4
+  coyoteTime: 0.12
+  jumpBufferTime: 0.12
+  landingFrictionDelay: 0.08
+  groundFriction: 18
+  slideSpeed: 12
+  slideDuration: 0.55
+  slideCooldown: 0.6
+  slideControllerHeight: 1
 --- !u!143 &824063653
 CharacterController:
   m_ObjectHideFlags: 0
