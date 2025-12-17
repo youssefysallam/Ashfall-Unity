@@ -15,35 +15,34 @@ public class ZombieAI : MonoBehaviour
     public int attackDamage = 10;
     public float attackCooldown = 1.0f;
 
-    Transform player;
-    PlayerStats playerStats;
-    NavMeshAgent agent;
+    private Transform player;
+    private PlayerStats playerStats;
+    private NavMeshAgent agent;
 
-    float attackTimer;
+    private float attackTimer;
 
     void Awake()
     {
         agent = GetComponent<NavMeshAgent>();
         agent.stoppingDistance = stopDistance;
+        anim = GetComponentInChildren<Animator>();
     }
-
 
     void Start()
     {
-        // Assumes your player root is tagged Player or named PlayerRoot
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null)
-        {
-            player = p.transform;
-            playerStats = p.GetComponent<PlayerStats>();
-        }
-
-        anim = GetComponentInChildren<Animator>();
+        AcquirePlayer();
     }
 
     void Update()
     {
-        if (player == null) return;
+        if (player == null || playerStats == null)
+            AcquirePlayer();
+
+        if (player == null)
+        {
+            agent.isStopped = true;
+            return;
+        }
 
         float d = Vector3.Distance(transform.position, player.position);
 
@@ -52,23 +51,26 @@ public class ZombieAI : MonoBehaviour
             agent.isStopped = false;
             agent.SetDestination(player.position);
 
-            // face movement direction a bit nicer
-            if (agent.velocity.sqrMagnitude > 0.1f)
+            if (d <= stopDistance)
             {
-                Vector3 dir = agent.velocity.normalized;
-                Quaternion targetRot = Quaternion.LookRotation(dir);
-                transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.deltaTime);
+                Vector3 dir = (player.position - transform.position);
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRot = Quaternion.LookRotation(dir.normalized);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.deltaTime);
+                }
             }
+
             if (anim != null)
             {
-                float speed01 = agent.velocity.magnitude;   // world speed
+                float speed01 = agent.velocity.magnitude;
                 anim.SetFloat("Speed", speed01);
             }
 
-
             attackTimer -= Time.deltaTime;
 
-            float mult = GameManager.Instance != null ? GameManager.Instance.ZombieDamageMultiplier(): 1f;
+            float mult = GameManager.Instance != null ? GameManager.Instance.ZombieDamageMultiplier() : 1f;
             float dmg = attackDamage * mult;
 
             if (d <= attackRange && attackTimer <= 0f)
@@ -84,4 +86,33 @@ public class ZombieAI : MonoBehaviour
             agent.isStopped = true;
         }
     }
+
+    private void AcquirePlayer()
+    {
+        GameObject p = GameObject.FindGameObjectWithTag("Player");
+
+        if (p == null)
+        {
+            GameObject byName = GameObject.Find("PlayerRoot");
+            if (byName != null) p = byName;
+        }
+
+        if (p == null)
+        {
+            player = null;
+            playerStats = null;
+            return;
+        }
+
+        player = p.transform;
+
+        playerStats = p.GetComponent<PlayerStats>();
+        if (playerStats == null)
+            playerStats = p.GetComponentInChildren<PlayerStats>(true);
+        if (playerStats == null)
+            playerStats = p.GetComponentInParent<PlayerStats>();
+        if (playerStats == null)
+            playerStats = Object.FindFirstObjectByType<PlayerStats>();
+    }
 }
+

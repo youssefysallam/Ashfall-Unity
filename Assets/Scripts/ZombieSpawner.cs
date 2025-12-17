@@ -35,8 +35,6 @@ public class ZombieSpawner : MonoBehaviour
     {
         if (zombiePrefab == null) return;
 
-        // If there are ANY compile/runtime errors, you’ll see them in Console
-        // but this keeps the list clean.
         alive.RemoveAll(z => z == null);
 
         if (spawnPoints == null || spawnPoints.Count == 0) return;
@@ -52,7 +50,6 @@ public class ZombieSpawner : MonoBehaviour
 
     void TrySpawn()
     {
-        // Try a few random points
         for (int i = 0; i < 8; i++)
         {
             Transform sp = spawnPoints[Random.Range(0, spawnPoints.Count)];

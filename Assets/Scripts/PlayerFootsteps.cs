@@ -3,22 +3,18 @@ using UnityEngine;
 public class PlayerFootsteps : MonoBehaviour
 {
     public AudioSource source;
-    public AudioClip[] stepClips;
 
-    [Header("Timing (seconds)")]
-    public float walkStepInterval = 0.55f;
-    public float runStepInterval  = 0.35f;
+    [Header("Loop Clips")]
+    public AudioClip walkLoop;
+    public AudioClip runLoop;
 
     [Header("Detection")]
     public float minMoveSpeed = 0.1f;
 
-    // If you have one of these, assign it (otherwise it uses transform movement)
     public CharacterController controller;
     public Rigidbody rb;
 
-    public bool isRunning; // set this from your movement script (Shift, stamina, etc.)
-
-    float nextStepTime;
+    public bool isRunning;
 
     void Reset()
     {
@@ -29,32 +25,56 @@ public class PlayerFootsteps : MonoBehaviour
 
     void Update()
     {
-        float speed = GetSpeed();
-        bool moving = speed > minMoveSpeed;
+        float speed = GetPlanarSpeed();
+        bool moving = speed > minMoveSpeed && controller != null && controller.isGrounded;
 
-        if (!moving) return;
-
-        float interval = isRunning ? runStepInterval : walkStepInterval;
-
-        if (Time.time >= nextStepTime)
+        if (!moving)
         {
-            PlayStep();
-            nextStepTime = Time.time + interval;
+            StopLoop();
+            return;
         }
+
+        AudioClip target = isRunning ? runLoop : walkLoop;
+        StartOrSwitchLoop(target);
     }
 
-    float GetSpeed()
+    float GetPlanarSpeed()
     {
-        if (controller != null) return controller.velocity.magnitude;
-        if (rb != null) return rb.linearVelocity.magnitude;
-        // fallback: not perfect, but works
+        if (controller != null)
+        {
+            Vector3 v = controller.velocity;
+            v.y = 0f;
+            return v.magnitude;
+        }
+
+        if (rb != null)
+        {
+            Vector3 v = rb.linearVelocity;
+            v.y = 0f;
+            return v.magnitude;
+        }
+
         return new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical")).magnitude;
     }
 
-    void PlayStep()
+    void StartOrSwitchLoop(AudioClip clip)
     {
-        if (source == null || stepClips == null || stepClips.Length == 0) return;
-        var clip = stepClips[Random.Range(0, stepClips.Length)];
-        source.PlayOneShot(clip, 0.8f);
+        if (source == null || clip == null) return;
+
+        if (source.clip == clip && source.isPlaying) return;
+
+        source.loop = true;
+        source.clip = clip;
+        source.Play();
+    }
+
+    void StopLoop()
+    {
+        if (source == null) return;
+        if (!source.isPlaying) return;
+
+        source.Stop();
+        source.clip = null;
+        source.loop = false;
     }
 }

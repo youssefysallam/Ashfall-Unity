@@ -38,7 +38,7 @@ public class PlayerMovement : MonoBehaviour
     // Only start damaging after you hit the ground with at least this impact speed
     [SerializeField] private float safeImpactSpeed = 10f;     // “roof hop” safe-ish
     [SerializeField] private float damagePerSpeed = 6f;       // damage per 1 m/s above safeImpactSpeed
-    [SerializeField] private float maxFallDamage = 95f;       // prevents instant death unless you want it
+    [SerializeField] private float maxFallDamage = 95f;       // prevents instant death
     [SerializeField] private float minFallHeight = 2.5f;      // ignore tiny steps/slopes
 
     private bool wasGrounded;
@@ -86,7 +86,9 @@ public class PlayerMovement : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         defaultControllerHeight = controller.height;
-        footsteps = GetComponent<PlayerFootsteps>();
+        
+        if (footsteps == null)
+            footsteps = GetComponent<PlayerFootsteps>();
     }
 
     void Update()
@@ -146,10 +148,10 @@ public class PlayerMovement : MonoBehaviour
 
         bool sprinting = Input.GetKey(KeyCode.LeftShift);
 
-        if (footsteps != null)
-            footsteps.isRunning = sprinting;
-
         float speed = moveSpeed * (sprinting ? sprintMultiplier : 1f);
+        
+        if (footsteps != null)
+            footsteps.isRunning = sprinting && moveDir.sqrMagnitude > 0.01f;
 
 
         // --- Slide start (LCTRL) ---
