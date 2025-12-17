@@ -22,7 +22,7 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         if (SceneManager.GetActiveScene().name == "Boot")
-            SceneManager.LoadScene("Gameplay_Overworld");
+            SceneManager.LoadScene("Ashfall_City");
     }
 
     void Awake()
@@ -116,5 +116,10 @@ public class GameManager : MonoBehaviour
             $"Health: {playerStats.Health:0}\n" +
             $"Hunger: {playerStats.Hunger:0}\n" +
             $"Oxygen: {playerStats.Oxygen:0}\n";
+    }
+
+    public float ZombieDamageMultiplier()
+    {
+        return 1f + (CurrentDay - 1) * 0.15f;
     }
 }

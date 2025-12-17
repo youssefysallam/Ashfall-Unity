@@ -1,8 +1,10 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class ZombieSpawner : MonoBehaviour
 {
+    [Header("References")]
     public GameObject zombiePrefab;
     public List<Transform> spawnPoints = new List<Transform>();
 
@@ -11,70 +13,62 @@ public class ZombieSpawner : MonoBehaviour
     public float spawnInterval = 2f;
     public float minDistanceFromPlayer = 15f;
 
-    Transform player;
-    float timer;
-    readonly List<GameObject> alive = new();
+    private readonly List<GameObject> alive = new();
+    private float timer;
+    private Transform player;
 
-    void Start()
+    void Awake()
     {
-        GameObject p = GameObject.FindGameObjectWithTag("Player");
-        if (p != null) player = p.transform;
-
-        // Auto-collect child spawner points if list empty
+        // Auto-fill spawn points from children if none assigned
+        if (spawnPoints == null) spawnPoints = new List<Transform>();
         if (spawnPoints.Count == 0)
         {
             foreach (Transform child in transform)
                 spawnPoints.Add(child);
         }
+
+        var playerObj = GameObject.FindGameObjectWithTag("Player");
+        if (playerObj != null) player = playerObj.transform;
     }
 
     void Update()
     {
-        CleanupDead();
+        if (zombiePrefab == null) return;
 
-        if (zombiePrefab == null || spawnPoints.Count == 0) return;
+        // If there are ANY compile/runtime errors, you’ll see them in Console
+        // but this keeps the list clean.
+        alive.RemoveAll(z => z == null);
+
+        if (spawnPoints == null || spawnPoints.Count == 0) return;
         if (alive.Count >= maxAlive) return;
+        if (player == null) return;
 
-        timer -= Time.deltaTime;
-        if (timer > 0f) return;
-        timer = spawnInterval;
+        timer += Time.deltaTime;
+        if (timer < spawnInterval) return;
+        timer = 0f;
 
-        Transform sp = PickSpawnPoint();
-        if (sp == null) return;
-
-        GameObject z = Instantiate(zombiePrefab, sp.position, sp.rotation);
-        alive.Add(z);
-
-        // hook kill stats
-        var zh = z.GetComponent<ZombieHealth>();
-        if (zh != null)
-        {
-            zh.OnDied += _ =>
-            {
-                // if you add GameManager kill tracking:
-                // FindObjectOfType<GameManager>()?.RegisterZombieKill();
-            };
-        }
+        TrySpawn();
     }
 
-    void CleanupDead()
+    void TrySpawn()
     {
-        for (int i = alive.Count - 1; i >= 0; i--)
-            if (alive[i] == null) alive.RemoveAt(i);
-    }
-
-    Transform PickSpawnPoint()
-    {
-        if (player == null) return spawnPoints[Random.Range(0, spawnPoints.Count)];
-
-        // try a few times to find one not near player
-        for (int tries = 0; tries < 10; tries++)
+        // Try a few random points
+        for (int i = 0; i < 8; i++)
         {
             Transform sp = spawnPoints[Random.Range(0, spawnPoints.Count)];
-            if (Vector3.Distance(sp.position, player.position) >= minDistanceFromPlayer)
-                return sp;
-        }
+            if (sp == null) continue;
 
-        return null;
+            if (Vector3.Distance(sp.position, player.position) < minDistanceFromPlayer)
+                continue;
+
+            // Snap to navmesh so agent can move
+            Vector3 pos = sp.position;
+            if (NavMesh.SamplePosition(pos, out NavMeshHit hit, 5f, NavMesh.AllAreas))
+                pos = hit.position;
+
+            GameObject z = Instantiate(zombiePrefab, pos, Quaternion.identity);
+            alive.Add(z);
+            return;
+        }
     }
 }

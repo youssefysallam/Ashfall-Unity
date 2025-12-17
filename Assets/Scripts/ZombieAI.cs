@@ -3,6 +3,8 @@ using UnityEngine.AI;
 
 public class ZombieAI : MonoBehaviour
 {
+    private Animator anim;
+
     [Header("Chase")]
     public float detectRange = 30f;
     public float stopDistance = 1.8f;
@@ -34,6 +36,8 @@ public class ZombieAI : MonoBehaviour
             player = p.transform;
             playerStats = p.GetComponent<PlayerStats>();
         }
+
+        anim = GetComponentInChildren<Animator>();
     }
 
     void Update()
@@ -54,15 +58,24 @@ public class ZombieAI : MonoBehaviour
                 Quaternion targetRot = Quaternion.LookRotation(dir);
                 transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, turnSpeed * Time.deltaTime);
             }
+            if (anim != null)
+            {
+                float speed01 = agent.velocity.magnitude;   // world speed
+                anim.SetFloat("Speed", speed01);
+            }
+
 
             attackTimer -= Time.deltaTime;
+
+            float mult = GameManager.Instance != null ? GameManager.Instance.ZombieDamageMultiplier(): 1f;
+            float dmg = attackDamage * mult;
 
             if (d <= attackRange && attackTimer <= 0f)
             {
                 attackTimer = attackCooldown;
 
                 if (playerStats != null)
-                    playerStats.TakeDamage(attackDamage);
+                    playerStats.TakeDamage(dmg);
             }
         }
         else
