@@ -12,25 +12,34 @@ public class HUDController : MonoBehaviour
 
     void Start()
     {
-        if (playerStats == null) { Debug.LogError("HUDController missing PlayerStats"); enabled = false; return; }
+        if (playerStats == null || healthSlider == null || hungerSlider == null || oxygenSlider == null)
+        {
+            Debug.LogError("HUDController missing references (PlayerStats or Sliders).");
+            enabled = false;
+            return;
+        }
+
+        healthSlider.minValue = 0f;
+        hungerSlider.minValue = 0f;
+        oxygenSlider.minValue = 0f;
 
         healthSlider.maxValue = playerStats.maxHealth;
         hungerSlider.maxValue = playerStats.maxHunger;
         oxygenSlider.maxValue = playerStats.maxOxygen;
+
+        // Start full
+        healthSlider.value = playerStats.Health;
+        hungerSlider.value = playerStats.Hunger;
+        oxygenSlider.value = playerStats.Oxygen;
     }
 
     void Update()
     {
-        if (playerStats == null) return;
-
         healthSlider.value = playerStats.Health;
         hungerSlider.value = playerStats.Hunger;
         oxygenSlider.value = playerStats.Oxygen;
 
-        if (GameManager.Instance != null)
-        {
+        if (GameManager.Instance != null && dayText != null)
             dayText.text = $"Day {GameManager.Instance.CurrentDay}";
-        }
-    
     }
 }

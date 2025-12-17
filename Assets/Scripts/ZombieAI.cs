@@ -27,6 +27,7 @@ public class ZombieAI : MonoBehaviour
         agent.stoppingDistance = stopDistance;
     }
 
+
     void Start()
     {
         // Assumes your player root is tagged Player or named PlayerRoot

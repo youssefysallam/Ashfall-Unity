@@ -101,7 +101,7 @@ public class GameManager : MonoBehaviour
 
         if (deathUI != null)
         {
-            string summary = BuildRunSummary(dayReached); // you implement this
+            string summary = BuildRunSummary(dayReached);
             deathUI.Show(dayReached, summary);
         }
     }

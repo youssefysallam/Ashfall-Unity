@@ -3,6 +3,7 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
 {
+    public PlayerFootsteps footsteps;
     public float moveSpeed = 5f;
     public float gravity = -9.81f;
     public float jumpHeight = 1.5f;
@@ -85,6 +86,7 @@ public class PlayerMovement : MonoBehaviour
     {
         controller = GetComponent<CharacterController>();
         defaultControllerHeight = controller.height;
+        footsteps = GetComponent<PlayerFootsteps>();
     }
 
     void Update()
@@ -143,7 +145,12 @@ public class PlayerMovement : MonoBehaviour
         if (moveDir.sqrMagnitude > 1f) moveDir.Normalize();
 
         bool sprinting = Input.GetKey(KeyCode.LeftShift);
+
+        if (footsteps != null)
+            footsteps.isRunning = sprinting;
+
         float speed = moveSpeed * (sprinting ? sprintMultiplier : 1f);
+
 
         // --- Slide start (LCTRL) ---
         if (!isSliding && slideCooldownTimer <= 0f && grounded && sprinting && Input.GetKeyDown(KeyCode.LeftControl))
