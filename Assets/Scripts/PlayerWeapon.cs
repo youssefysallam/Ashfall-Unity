@@ -1,13 +1,6 @@
 using System;
 using UnityEngine;
 
-public enum WeaponType
-{
-    None,
-    Gun,
-    Melee
-}
-
 public class PlayerWeapon : MonoBehaviour
 {
     [Header("Attach")]
@@ -20,20 +13,18 @@ public class PlayerWeapon : MonoBehaviour
     [SerializeField] private string adsButton = "Fire2";
     [SerializeField] private string fireButton = "Fire1";
 
-    [Header("Shooting")]
-    [SerializeField] private float fireRate = 0.18f;
-    [SerializeField] private float range = 120f;
-    [SerializeField] private int damage = 25;
+    [Header("Hit")]
     [SerializeField] private LayerMask hitMask = ~0;
-
-    [Header("Audio")]
-    [SerializeField] private AudioClip pistolShot;
 
     [Header("Runtime")]
     [SerializeField] private GameObject currentWeapon;
+    [SerializeField] private WeaponStats currentStats;
     [SerializeField] private ParticleSystem muzzleFlash;
-    [SerializeField] private WeaponType currentWeaponType = WeaponType.None;
+    [Header("Melee")]
+    [SerializeField] private float meleeCooldown = 0.55f;
+    [SerializeField] private float meleeRadius = 0.85f;
 
+    private float meleeTimer;
 
     private float fireTimer;
     private Collider[] selfColliders;
@@ -50,40 +41,60 @@ public class PlayerWeapon : MonoBehaviour
     private void Update()
     {
         fireTimer -= Time.deltaTime;
+        meleeTimer -= Time.deltaTime;
 
         if (animator != null)
         {
-            bool ads = currentWeaponType == WeaponType.Gun && Input.GetButton(adsButton);
+            bool ads = currentStats != null
+                       && currentStats.type == WeaponType.Gun
+                       && currentStats.allowADS
+                       && Input.GetButton(adsButton);
+
             animator.SetBool("ADS", ads);
         }
 
         if (Input.GetButtonDown(fireButton))
         {
-            if (currentWeaponType == WeaponType.None)
+            if (currentStats == null)
             {
-                animator.SetTrigger("Punch");
+                if (animator != null) animator.SetTrigger("Punch");
                 return;
             }
 
-            if (currentWeaponType == WeaponType.Melee)
+            if (currentStats.type == WeaponType.Melee)
             {
-                animator.SetTrigger("Melee");
+                Debug.Log("[MELEE] Triggered melee input");
+
+                if (animator != null) animator.SetTrigger("Melee");
+
+                if (meleeTimer <= 0f)
+                {
+                    meleeTimer = meleeCooldown;
+                    DoMeleeHit();
+                }
+
                 return;
             }
+
         }
-        if (currentWeaponType == WeaponType.Gun)
+
+        if (currentStats == null) return;
+
+        if (currentStats.type == WeaponType.Gun)
         {
-            if (Input.GetButton(fireButton) && fireTimer <= 0f)
+            bool wantsFire = currentStats.automatic ? Input.GetButton(fireButton) : Input.GetButtonDown(fireButton);
+
+            if (wantsFire && fireTimer <= 0f)
             {
-                fireTimer = fireRate;
-                Shoot();
+                fireTimer = Mathf.Max(0.01f, currentStats.fireRate);
+                ShootGun();
             }
         }
     }
 
-    public void Equip(GameObject weaponPrefab, AudioClip shotClip = null)
+    public void Equip(WeaponStats stats)
     {
-        if (weaponHolder == null || weaponPrefab == null) return;
+        if (weaponHolder == null || stats == null || stats.weaponPrefab == null) return;
 
         if (currentWeapon != null)
         {
@@ -91,12 +102,12 @@ public class PlayerWeapon : MonoBehaviour
             currentWeapon = null;
         }
 
-        currentWeapon = Instantiate(weaponPrefab, weaponHolder);
+        currentStats = stats;
+
+        currentWeapon = Instantiate(stats.weaponPrefab, weaponHolder);
         currentWeapon.transform.localPosition = Vector3.zero;
         currentWeapon.transform.localRotation = Quaternion.identity;
         currentWeapon.transform.localScale = Vector3.one;
-
-        pistolShot = shotClip != null ? shotClip : pistolShot;
 
         muzzleFlash = currentWeapon.GetComponentInChildren<ParticleSystem>(true);
         if (muzzleFlash != null)
@@ -104,11 +115,9 @@ public class PlayerWeapon : MonoBehaviour
             muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
-        currentWeaponType = WeaponType.Gun;
-        
         if (animator != null)
         {
-            animator.SetBool("HasPistol", true);
+            animator.SetBool("HasPistol", stats.type == WeaponType.Gun);
         }
     }
 
@@ -120,9 +129,8 @@ public class PlayerWeapon : MonoBehaviour
             currentWeapon = null;
         }
 
+        currentStats = null;
         muzzleFlash = null;
-
-        currentWeaponType = WeaponType.None;
 
         if (animator != null)
         {
@@ -131,7 +139,7 @@ public class PlayerWeapon : MonoBehaviour
         }
     }
 
-    private void Shoot()
+    private void ShootGun()
     {
         if (muzzleFlash != null)
         {
@@ -139,14 +147,15 @@ public class PlayerWeapon : MonoBehaviour
             muzzleFlash.Play(true);
         }
 
-        if (sfxSource != null && pistolShot != null)
+        if (sfxSource != null && currentStats != null && currentStats.shotClip != null)
         {
-            sfxSource.PlayOneShot(pistolShot);
+            sfxSource.PlayOneShot(currentStats.shotClip);
         }
 
-        if (aimCamera == null) return;
+        if (aimCamera == null || currentStats == null) return;
 
-        Debug.DrawRay(aimCamera.transform.position, aimCamera.transform.forward * range, Color.red, 1f);
+        float range = Mathf.Max(1f, currentStats.range);
+        int damage = Mathf.Max(0, currentStats.damage);
 
         Ray ray = new Ray(aimCamera.transform.position, aimCamera.transform.forward);
         RaycastHit[] hits = Physics.RaycastAll(ray, range, hitMask, QueryTriggerInteraction.Collide);
@@ -157,16 +166,13 @@ public class PlayerWeapon : MonoBehaviour
         for (int i = 0; i < hits.Length; i++)
         {
             RaycastHit hit = hits[i];
-
-            if (IsSelfCollider(hit.collider))
-                continue;
+            if (IsSelfCollider(hit.collider)) continue;
 
             ZombieHealth zh = hit.collider.GetComponentInParent<ZombieHealth>();
             if (zh != null)
             {
                 zh.TakeDamage(damage);
             }
-            Debug.Log($"[Hit] {hit.collider.name} layer={LayerMask.LayerToName(hit.collider.gameObject.layer)} trigger={hit.collider.isTrigger}");
 
             break;
         }
@@ -178,10 +184,72 @@ public class PlayerWeapon : MonoBehaviour
 
         for (int i = 0; i < selfColliders.Length; i++)
         {
-            if (selfColliders[i] == col)
-                return true;
+            if (selfColliders[i] == col) return true;
         }
 
         return false;
+    }
+
+    private void DoMeleeHit()
+    {
+        if (currentStats == null || currentStats.type != WeaponType.Melee)
+        {
+            Debug.Log("[MELEE] Abort: no melee stats");
+            return;
+        }
+
+        if (aimCamera == null)
+        {
+            Debug.Log("[MELEE] Abort: no aimCamera");
+            return;
+        }
+
+        float range = Mathf.Max(0.5f, currentStats.meleeRange);
+        int dmg = Mathf.Max(0, currentStats.meleeDamage);
+
+        Vector3 origin = transform.position + Vector3.up * 1.2f + transform.forward * 0.8f;
+        Vector3 dir = transform.forward;
+        dir.y = 0f;
+        dir.Normalize();
+
+        RaycastHit[] hits = Physics.SphereCastAll(
+            origin,
+            meleeRadius,
+            dir,
+            currentStats.meleeRange,
+            ~0,
+            QueryTriggerInteraction.Collide
+        );
+
+        Debug.Log($"[MELEE] SphereCast origin={origin} dir={dir} range={range} dmg={dmg}");
+
+        Debug.DrawRay(origin, dir * currentStats.meleeRange, Color.green, 1f);
+
+        Debug.Log($"[MELEE] Hits found: {(hits == null ? 0 : hits.Length)}");
+
+        if (hits == null || hits.Length == 0) return;
+
+        Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            var hit = hits[i];
+
+            Debug.Log($"[MELEE] Hit {hit.collider.name} (layer={LayerMask.LayerToName(hit.collider.gameObject.layer)})");
+
+            if (IsSelfCollider(hit.collider))
+            {
+                Debug.Log("[MELEE] Skipped self collider");
+                continue;
+            }
+
+            ZombieHealth zh = hit.collider.GetComponentInParent<ZombieHealth>();
+            if (zh != null)
+            {
+                Debug.Log($"[MELEE] DAMAGING zombie for {dmg}");
+                zh.TakeDamage(dmg);
+                break;
+            }
+        }
     }
 }

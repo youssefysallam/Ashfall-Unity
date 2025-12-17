@@ -1,11 +1,13 @@
 using UnityEngine;
+using System;
 
 public class ZombieHealth : MonoBehaviour
 {
     public int maxHP = 100;
     public int currentHP;
 
-    public System.Action<ZombieHealth> OnDied;
+    public Action<ZombieHealth> OnDied;
+    public static event Action<ZombieHealth> AnyZombieDied;
 
     void Awake()
     {
@@ -20,8 +22,9 @@ public class ZombieHealth : MonoBehaviour
 
     void Die()
     {
+        Debug.Log("[ZombieHealth] Die() fired");
         OnDied?.Invoke(this);
-
+        AnyZombieDied?.Invoke(this);
         Destroy(gameObject);
     }
 }
