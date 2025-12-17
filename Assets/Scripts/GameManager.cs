@@ -93,13 +93,28 @@ public class GameManager : MonoBehaviour
         if (isDead) return;
         isDead = true;
 
+        int dayReached = CurrentDay;
+
         Debug.Log("Run ended. Resetting to Day 1.");
         CurrentDay = 1;
         dayTimer = 0f;
 
         if (deathUI != null)
-            deathUI.Show(CurrentDay);
-        else
-            SceneManager.LoadScene("Gameplay_Overworld");
+        {
+            string summary = BuildRunSummary(dayReached); // you implement this
+            deathUI.Show(dayReached, summary);
+        }
+    }
+
+    string BuildRunSummary(int dayReached)
+    {
+        if (playerStats == null)
+            return $"Reached Day {dayReached}";
+        
+        return
+            $"Reached Day: {dayReached}\n" +
+            $"Health: {playerStats.Health:0}\n" +
+            $"Hunger: {playerStats.Hunger:0}\n" +
+            $"Oxygen: {playerStats.Oxygen:0}\n";
     }
 }

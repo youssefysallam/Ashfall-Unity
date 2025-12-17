@@ -31,6 +31,19 @@ public class PlayerMovement : MonoBehaviour
     public float slideDuration = 0.55f;
     public float slideCooldown = 0.6f;
     public float slideControllerHeight = 1.0f;
+    [Header("Fall Damage")]
+    [SerializeField] private bool enableFallDamage = true;
+
+    // Only start damaging after you hit the ground with at least this impact speed
+    [SerializeField] private float safeImpactSpeed = 10f;     // “roof hop” safe-ish
+    [SerializeField] private float damagePerSpeed = 6f;       // damage per 1 m/s above safeImpactSpeed
+    [SerializeField] private float maxFallDamage = 95f;       // prevents instant death unless you want it
+    [SerializeField] private float minFallHeight = 2.5f;      // ignore tiny steps/slopes
+
+    private bool wasGrounded;
+    private float mostNegativeYVel;   // tracks fastest downward speed during the fall
+    private float fallStartY;
+
 
     private Vector3 horizVel;
     private float verticalVel;
@@ -46,6 +59,27 @@ public class PlayerMovement : MonoBehaviour
     private Vector3 slideDirection;
     public Animator animator;
 
+    // Helpers
+    private void TryApplyDamage(float amount)
+    {
+        SendMessage("TakeDamage", amount, SendMessageOptions.DontRequireReceiver);
+    }
+
+    private void OnLanded()
+    {
+        if (!enableFallDamage) return;
+
+        float fallHeight = fallStartY - transform.position.y;
+        float impactSpeed = -mostNegativeYVel; // convert negative downward vel to positive speed
+
+        if (fallHeight < minFallHeight) return;
+        if (impactSpeed <= safeImpactSpeed) return;
+
+        float damage = (impactSpeed - safeImpactSpeed) * damagePerSpeed;
+        damage = Mathf.Clamp(damage, 0f, maxFallDamage);
+
+        TryApplyDamage(damage);
+    }
 
     void Awake()
     {
@@ -71,6 +105,28 @@ public class PlayerMovement : MonoBehaviour
         {
             coyoteTimer -= dt;
         }
+        bool groundedNow = controller.isGrounded;
+
+        // Start of a fall
+        if (!groundedNow && wasGrounded)
+        {
+            fallStartY = transform.position.y;
+            mostNegativeYVel = 0f;
+        }
+
+        // While falling, track fastest downward speed
+        if (!groundedNow)
+        {
+            mostNegativeYVel = Mathf.Min(mostNegativeYVel, verticalVel); // verticalVelocity is negative while falling
+        }
+
+        // Landing
+        if (groundedNow && !wasGrounded)
+        {
+            OnLanded();
+        }
+
+        wasGrounded = groundedNow;
 
         jumpBufferTimer -= dt;
         if (Input.GetButtonDown("Jump"))
