@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 646e05225c7d50d4c9933ec71ffaa7c7, type: 3}
   m_Name: LMGStats
   m_EditorClassIdentifier: Assembly-CSharp::WeaponStats
+  gunAnimSet: 1
   displayName: Light Machine Gun
   type: 0
   weaponPrefab: {fileID: 1395857700468264, guid: 3e9dcf9e9d8d7a4438ae8cfb9e5badf2, type: 3}
@@ -23,3 +24,5 @@ MonoBehaviour:
   shotClip: {fileID: 0}
   meleeDamage: 25
   meleeRange: 2.2
+  localPosOffset: {x: 0, y: 0, z: 0}
+  localRotOffset: {x: 0, y: 0, z: 0}

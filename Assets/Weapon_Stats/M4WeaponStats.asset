@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 646e05225c7d50d4c9933ec71ffaa7c7, type: 3}
   m_Name: M4WeaponStats
   m_EditorClassIdentifier: Assembly-CSharp::WeaponStats
+  gunAnimSet: 1
   displayName: M4
   type: 0
   weaponPrefab: {fileID: 1072090535415360, guid: ac46653d56756124eb294a6b8c58d2d3, type: 3}
@@ -23,3 +24,5 @@ MonoBehaviour:
   shotClip: {fileID: 0}
   meleeDamage: 25
   meleeRange: 2.2
+  localPosOffset: {x: -0.03, y: 0.07, z: 0.14}
+  localRotOffset: {x: -12, y: 6, z: 2}

@@ -105,8 +105,8 @@ public class PlayerWeapon : MonoBehaviour
         currentStats = stats;
 
         currentWeapon = Instantiate(stats.weaponPrefab, weaponHolder);
-        currentWeapon.transform.localPosition = Vector3.zero;
-        currentWeapon.transform.localRotation = Quaternion.identity;
+        currentWeapon.transform.localPosition = stats.localPosOffset;
+        currentWeapon.transform.localRotation = Quaternion.Euler(stats.localRotOffset);
         currentWeapon.transform.localScale = Vector3.one;
 
         muzzleFlash = currentWeapon.GetComponentInChildren<ParticleSystem>(true);
@@ -117,7 +117,17 @@ public class PlayerWeapon : MonoBehaviour
 
         if (animator != null)
         {
-            animator.SetBool("HasPistol", stats.type == WeaponType.Gun);
+            if (stats.type == WeaponType.Gun)
+            {
+                bool isPistol = stats.gunAnimSet == GunAnimSet.Pistol;
+                animator.SetBool("HasPistol", isPistol);
+                animator.SetBool("HasRifle", !isPistol);
+            }
+            else
+            {
+                animator.SetBool("HasPistol", false);
+                animator.SetBool("HasRifle", false);
+            }
         }
     }
 
@@ -135,12 +145,18 @@ public class PlayerWeapon : MonoBehaviour
         if (animator != null)
         {
             animator.SetBool("HasPistol", false);
+            animator.SetBool("HasRifle", false);
             animator.SetBool("ADS", false);
         }
     }
 
     private void ShootGun()
     {
+        if (animator != null)
+        {
+            animator.SetTrigger("Fire");
+        }
+
         if (muzzleFlash != null)
         {
             muzzleFlash.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);

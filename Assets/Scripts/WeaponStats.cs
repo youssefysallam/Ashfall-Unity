@@ -6,9 +6,17 @@ public enum WeaponType
     Melee
 }
 
+public enum GunAnimSet
+{
+    Pistol,
+    Rifle
+}
+
 [CreateAssetMenu(menuName = "Ashfall/Weapon Stats", fileName = "WeaponStats")]
 public class WeaponStats : ScriptableObject
 {
+    [Header("Animation")]
+    public GunAnimSet gunAnimSet = GunAnimSet.Pistol;
     [Header("Identity")]
     public string displayName = "Weapon";
     public WeaponType type = WeaponType.Gun;
@@ -27,4 +35,7 @@ public class WeaponStats : ScriptableObject
     [Header("Melee Settings")]
     public int meleeDamage = 25;
     public float meleeRange = 2.2f;
+
+    public Vector3 localPosOffset;
+    public Vector3 localRotOffset;
 }

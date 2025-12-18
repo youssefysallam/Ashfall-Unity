@@ -4,9 +4,12 @@ using TMPro;
 
 public class DeathUI : MonoBehaviour
 {
-    [SerializeField] GameObject root;
-    [SerializeField] TMP_Text titleText;
-    [SerializeField] TMP_Text statsText;
+    [SerializeField] private GameObject root;
+    [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text statsText;
+
+    [Header("Scene Names")]
+    [SerializeField] private string gameplaySceneName = "Ashfall_City";
 
     void Awake()
     {
@@ -21,7 +24,8 @@ public class DeathUI : MonoBehaviour
         if (statsText != null)
             statsText.text = statsSummary;
 
-        root.SetActive(true);
+        if (root != null) root.SetActive(true);
+
         Time.timeScale = 0f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -39,6 +43,22 @@ public class DeathUI : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
 
-        SceneManager.LoadScene("Gameplay_Overworld");
+        if (SaveLoadManager.Instance != null)
+            SaveLoadManager.Instance.StartNewGame();
+        else
+            SceneManager.LoadScene(gameplaySceneName);
+    }
+
+    public void MainMenu()
+    {
+        Time.timeScale = 1f;
+
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        if (SaveLoadManager.Instance != null)
+            SaveLoadManager.Instance.ReturnToMainMenu();
+        else
+            SceneManager.LoadScene("Boot");
     }
 }

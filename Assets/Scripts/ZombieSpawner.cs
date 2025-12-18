@@ -63,8 +63,25 @@ public class ZombieSpawner : MonoBehaviour
             if (NavMesh.SamplePosition(pos, out NavMeshHit hit, 5f, NavMesh.AllAreas))
                 pos = hit.position;
 
+            if (GameManager.Instance != null && !GameManager.Instance.CanSpawnZombie())
+                return;
+
             GameObject z = Instantiate(zombiePrefab, pos, Quaternion.identity);
             alive.Add(z);
+
+            if (GameManager.Instance != null)
+                GameManager.Instance.NotifyZombieSpawned();
+
+            var zh = z.GetComponent<ZombieHealth>();
+            if (zh != null)
+            {
+                zh.OnDied += (_) =>
+                {
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.NotifyZombieDied();
+                };
+            }
+
             return;
         }
     }

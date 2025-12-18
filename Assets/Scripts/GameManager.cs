@@ -5,11 +5,17 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    [Header("Day Settings")]
-    public float dayLengthSeconds = 120f; //2 mins per day for now
+    [Header("Day/Wave Settings")]
     public int CurrentDay { get; private set; } = 1;
 
-    private float dayTimer;
+    [Tooltip("How many zombies total spawn on Day 1.")]
+    public int zombiesPerDayBase = 12;
+
+    [Tooltip("How many extra zombies are added each new day.")]
+    public int zombiesPerDayIncrease = 4;
+
+    [Tooltip("Seconds to wait after clearing a day before starting the next day.")]
+    public float intermissionSeconds = 4f;
 
     [Header("Difficulty Scaling")]
     public float hungerDecayIncreasePerDay = 0.2f;
@@ -17,8 +23,16 @@ public class GameManager : MonoBehaviour
 
     private PlayerStats playerStats;
     [SerializeField] private DeathUI deathUI;
-    private bool isDead = false;
-    
+
+    private bool isDead;
+
+    private int zombiesToSpawnThisDay;
+    private int zombiesSpawnedThisDay;
+    private int zombiesAlive;
+
+    private bool dayActive;
+    private float intermissionTimer;
+
     void Start()
     {
         if (SceneManager.GetActiveScene().name == "Boot")
@@ -32,6 +46,7 @@ public class GameManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
@@ -54,38 +69,93 @@ public class GameManager : MonoBehaviour
 
         if (playerStats != null)
             playerStats.OnPlayerDied += HandlePlayerDeath;
-        else
-            Debug.Log("No PlayerStats found in scene " + scene.name);
 
         deathUI = FindFirstObjectByType<DeathUI>();
         if (deathUI != null) deathUI.Hide();
 
         isDead = false;
         Time.timeScale = 1f;
-    }
 
+        ResetRunAndStartDay1();
+    }
 
     void Update()
     {
-        if (playerStats == null) return;
+        if (isDead) return;
 
-        dayTimer += Time.deltaTime;
-
-        if (dayTimer >= dayLengthSeconds)
+        if (!dayActive)
         {
-            dayTimer = 0f;
-            CurrentDay++;
-            OnNewDay();
+            intermissionTimer -= Time.deltaTime;
+            if (intermissionTimer <= 0f)
+            {
+                StartDay();
+            }
         }
+    }
+
+    private void ResetRunAndStartDay1()
+    {
+        CurrentDay = 1;
+        zombiesSpawnedThisDay = 0;
+        zombiesAlive = 0;
+
+        StartDay();
+    }
+
+    private void StartDay()
+    {
+        dayActive = true;
+        intermissionTimer = 0f;
+
+        zombiesToSpawnThisDay = zombiesPerDayBase + (CurrentDay - 1) * zombiesPerDayIncrease;
+        zombiesSpawnedThisDay = 0;
+        zombiesAlive = 0;
+
+        Debug.Log($"[Day/Wave] Day {CurrentDay} started. Quota={zombiesToSpawnThisDay}");
+    }
+
+    private void EndDay()
+    {
+        dayActive = false;
+        intermissionTimer = intermissionSeconds;
+
+        CurrentDay++;
+        OnNewDay();
+
+        Debug.Log($"[Day/Wave] Day cleared. Next Day={CurrentDay} in {intermissionSeconds:0.0}s");
     }
 
     void OnNewDay()
     {
-        //Ramp difficulty
+        if (playerStats == null) return;
+
         playerStats.hungerDecayPerSecond += hungerDecayIncreasePerDay;
         playerStats.oxygenDecayPerSecond += oxygenDecayIncreasePerDay;
+    }
 
-        Debug.Log($"New Day: {CurrentDay}. Hunger Decay: {playerStats.hungerDecayPerSecond}. Oxygen: {playerStats.oxygenDecayPerSecond}");
+    public bool CanSpawnZombie()
+    {
+        if (isDead) return false;
+        if (!dayActive) return false;
+        return zombiesSpawnedThisDay < zombiesToSpawnThisDay;
+    }
+
+    public void NotifyZombieSpawned()
+    {
+        zombiesSpawnedThisDay++;
+        zombiesAlive++;
+    }
+
+    public void NotifyZombieDied()
+    {
+        zombiesAlive = Mathf.Max(0, zombiesAlive - 1);
+
+        if (dayActive && zombiesSpawnedThisDay >= zombiesToSpawnThisDay && zombiesAlive == 0)
+        {
+            EndDay();
+            if (SaveLoadManager.Instance != null)
+                SaveLoadManager.Instance.SaveGame();
+        }
     }
 
     void HandlePlayerDeath()
@@ -95,9 +165,11 @@ public class GameManager : MonoBehaviour
 
         int dayReached = CurrentDay;
 
-        Debug.Log("Run ended. Resetting to Day 1.");
         CurrentDay = 1;
-        dayTimer = 0f;
+        zombiesSpawnedThisDay = 0;
+        zombiesAlive = 0;
+        dayActive = false;
+        intermissionTimer = 0f;
 
         if (deathUI != null)
         {
@@ -110,7 +182,7 @@ public class GameManager : MonoBehaviour
     {
         if (playerStats == null)
             return $"Reached Day {dayReached}";
-        
+
         return
             $"Reached Day: {dayReached}\n" +
             $"Health: {playerStats.Health:0}\n" +
