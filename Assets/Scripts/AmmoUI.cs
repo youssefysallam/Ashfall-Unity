@@ -40,13 +40,6 @@ public class AmmoUI : MonoBehaviour
             float t = magSize > 0 ? (float)inMag / magSize : 0f;
             ammoFill.fillAmount = Mathf.Clamp01(t);
         }
-
-        if (ammoPips != null && ammoPips.Length > 0)
-        {
-            int shown = Mathf.Clamp(inMag, 0, ammoPips.Length);
-            for (int i = 0; i < ammoPips.Length; i++)
-                ammoPips[i].enabled = i < shown;
-        }
     }
 
     public void SetVisible(bool visible)
