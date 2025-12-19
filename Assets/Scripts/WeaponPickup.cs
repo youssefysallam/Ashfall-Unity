@@ -29,17 +29,7 @@ public class WeaponPickup : MonoBehaviour
     {
         if (visualRoot == null) visualRoot = transform;
 
-        if (weapon != null && weapon.weaponPrefab != null)
-        {
-            visualInstance = Instantiate(weapon.weaponPrefab, visualRoot);
-            visualInstance.transform.localPosition = Vector3.zero;
-            visualInstance.transform.localRotation = Quaternion.identity;
-            visualInstance.transform.localScale = visualLocalScale;
-
-            foreach (var c in visualInstance.GetComponentsInChildren<Collider>(true))
-                c.enabled = false;
-        }
-
+        RebuildVisual();
         promptUI = Object.FindFirstObjectByType<PickupPromptUI>(FindObjectsInactive.Include);
     }
 
@@ -83,5 +73,31 @@ public class WeaponPickup : MonoBehaviour
 
         if (promptUI != null)
             promptUI.Hide();
+    }
+    public void SetWeapon(WeaponStats ws)
+    {
+        weapon = ws;
+        RebuildVisual();
+    }
+
+    private void RebuildVisual()
+    {
+        if (visualRoot == null) visualRoot = transform;
+
+        if (visualInstance != null)
+            Destroy(visualInstance);
+
+        visualInstance = null;
+
+        if (weapon == null || weapon.weaponPrefab == null)
+            return;
+
+        visualInstance = Instantiate(weapon.weaponPrefab, visualRoot);
+        visualInstance.transform.localPosition = Vector3.zero;
+        visualInstance.transform.localRotation = Quaternion.identity;
+        visualInstance.transform.localScale = visualLocalScale;
+
+        foreach (var c in visualInstance.GetComponentsInChildren<Collider>(true))
+            c.enabled = false;
     }
 }

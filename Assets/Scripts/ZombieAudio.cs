@@ -11,14 +11,19 @@ public class ZombieAudio : MonoBehaviour
     public float minDelay = 3f;
     public float maxDelay = 8f;
 
+    [Header("Hearing")]
+    public float hearDistance = 25f;
+
     [Header("Volume")]
     [Range(0f, 1f)] public float volume = 0.8f;
 
-    Coroutine routine;
+    private Transform player;
+    private Coroutine routine;
 
     void Awake()
     {
         if (sfxSource == null) sfxSource = GetComponent<AudioSource>();
+        AcquirePlayer();
     }
 
     void OnEnable()
@@ -36,6 +41,27 @@ public class ZombieAudio : MonoBehaviour
         }
     }
 
+    private void AcquirePlayer()
+    {
+        var p = GameObject.FindGameObjectWithTag("Player");
+        if (p != null)
+        {
+            player = p.transform;
+            return;
+        }
+
+        var stats = Object.FindFirstObjectByType<PlayerStats>();
+        if (stats != null)
+        {
+            player = stats.transform;
+            return;
+        }
+
+        var byName = GameObject.Find("PlayerRoot");
+        player = byName != null ? byName.transform : null;
+    }
+
+
     System.Collections.IEnumerator AmbientLoop()
     {
         while (true)
@@ -43,12 +69,18 @@ public class ZombieAudio : MonoBehaviour
             float wait = Random.Range(minDelay, maxDelay);
             yield return new WaitForSeconds(wait);
 
-            if (ambientGroans == null || ambientGroans.Length == 0 || sfxSource == null)
-                continue;
+            if (player == null) AcquirePlayer();
+            if (player == null) continue;
 
-            AudioClip clip = ambientGroans[Random.Range(0, ambientGroans.Length)];
+            if (ambientGroans == null || ambientGroans.Length == 0) continue;
+            if (sfxSource == null) continue;
+
+            Debug.Log($"[ZombieAudio] player={(player!=null)} d={(player?Vector3.Distance(transform.position, player.position): -1f)}");
+            float d = Vector3.Distance(transform.position, player.position);
+            if (d > hearDistance) continue;
+
+            var clip = ambientGroans[Random.Range(0, ambientGroans.Length)];
             sfxSource.PlayOneShot(clip, volume);
         }
     }
 }
-

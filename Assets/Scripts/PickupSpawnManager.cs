@@ -13,10 +13,26 @@ public class PickupSpawnManager : MonoBehaviour
     public List<GameObject> oxygenPrefabs = new();
 
     [Header("Spawn Parents")]
-    public Transform foodSpawnsParent;     // WORLD/Pickups/FoodSpawns
-    public Transform oxygenSpawnsParent;   // WORLD/Pickups/OxygenSpawns
+    public Transform foodSpawnsParent;     
+    public Transform oxygenSpawnsParent;   
 
-    // Scarcity: once collected, it's gone for the run.
+    [Tooltip("Randomly chosen for each Medkit spawn point.")]
+    public List<GameObject> medkitPrefabs = new();
+
+    [Tooltip("Weapon pickup prefab that has WeaponPickup.cs on it.")]
+    public GameObject weaponPickupPrefab;
+
+    [Tooltip("Randomly chosen WeaponStats for each gun spawn point.")]
+    public List<WeaponStats> gunWeaponOptions = new();
+
+    public Transform medkitSpawnsParent;  
+    public Transform gunSpawnsParent;     
+
+    public GameObject[] ammoPrefabs;
+    public Transform ammoSpawnsParent;
+
+
+
     private readonly HashSet<string> consumedSpawnIds = new();
 
     private void Start()
@@ -28,6 +44,9 @@ public class PickupSpawnManager : MonoBehaviour
     {
         SpawnFromParent(foodSpawnsParent, PickupType.Food, foodPrefabs);
         SpawnFromParent(oxygenSpawnsParent, PickupType.Oxygen, oxygenPrefabs);
+        SpawnMedkitsOnce();
+        SpawnGunsOnce();
+        SpawnAmmoOnce();
     }
 
     private void SpawnFromParent(Transform parent, PickupType type, List<GameObject> prefabs)
@@ -41,12 +60,12 @@ public class PickupSpawnManager : MonoBehaviour
             string spawnId = MakeSpawnId(spawn, type);
 
             if (consumedSpawnIds.Contains(spawnId))
-                continue; // already collected this run
+                continue; 
 
             GameObject chosen = prefabs[Random.Range(0, prefabs.Count)];
             GameObject instance = Instantiate(chosen, spawn.position, spawn.rotation, spawn);
 
-            // Tell the pickup what it is + where it came from, so it can report back.
+            
             var pickup = instance.GetComponent<Pickup>();
             if (pickup == null)
             {
@@ -62,7 +81,6 @@ public class PickupSpawnManager : MonoBehaviour
         }
     }
 
-    // Called by Pickup.cs when collected
     public void MarkConsumed(string spawnId)
     {
         consumedSpawnIds.Add(spawnId);
@@ -70,8 +88,6 @@ public class PickupSpawnManager : MonoBehaviour
 
     private string MakeSpawnId(Transform spawn, PickupType type)
     {
-        // Stable ID per spawn point within this scene hierarchy.
-        // Example: Food:/WORLD/Pickups/FoodSpawns/Food_01
         return $"{type}:{GetPath(spawn)}";
     }
 
@@ -85,5 +101,104 @@ public class PickupSpawnManager : MonoBehaviour
         }
         parts.Reverse();
         return "/" + string.Join("/", parts);
+    }
+    
+    private void SpawnMedkitsOnce()
+    {
+        SpawnMedkitsFromParent(medkitSpawnsParent, medkitPrefabs);
+    }
+
+    private void SpawnGunsOnce()
+    {
+        SpawnGunsFromParent(gunSpawnsParent, weaponPickupPrefab, gunWeaponOptions);
+    }
+
+    private void SpawnMedkitsFromParent(Transform parent, List<GameObject> prefabs)
+    {
+        if (parent == null) { Debug.LogError($"[{nameof(PickupSpawnManager)}] Missing parent for Medkit spawns."); return; }
+        if (prefabs == null || prefabs.Count == 0) { Debug.LogError($"[{nameof(PickupSpawnManager)}] No prefabs set for Medkits."); return; }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform spawn = parent.GetChild(i);
+            string spawnId = $"Medkit:{GetPath(spawn)}";
+
+            if (consumedSpawnIds.Contains(spawnId))
+                continue;
+
+            GameObject chosen = prefabs[Random.Range(0, prefabs.Count)];
+            GameObject instance = Instantiate(chosen, spawn.position, spawn.rotation, spawn);
+
+            var mk = instance.GetComponent<MedkitPickup>();
+            if (mk == null)
+            {
+                Debug.LogError($"Prefab '{chosen.name}' is missing MedkitPickup.cs.");
+                continue;
+            }
+
+            mk.spawnManager = this;
+            mk.spawnId = spawnId;
+        }
+    }
+
+    private void SpawnGunsFromParent(Transform parent, GameObject pickupPrefab, List<WeaponStats> options)
+    {
+        if (parent == null) { Debug.LogError($"[{nameof(PickupSpawnManager)}] Missing parent for Gun spawns."); return; }
+        if (pickupPrefab == null) { Debug.LogError($"[{nameof(PickupSpawnManager)}] weaponPickupPrefab not set."); return; }
+        if (options == null || options.Count == 0) { Debug.LogError($"[{nameof(PickupSpawnManager)}] No WeaponStats options set for guns."); return; }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform spawn = parent.GetChild(i);
+            string spawnId = $"Gun:{GetPath(spawn)}";
+
+            if (consumedSpawnIds.Contains(spawnId))
+                continue;
+
+            WeaponStats chosen = options[Random.Range(0, options.Count)];
+            GameObject instance = Instantiate(pickupPrefab, spawn.position, spawn.rotation, spawn);
+
+            var wp = instance.GetComponent<WeaponPickup>();
+            if (wp == null)
+            {
+                Debug.LogError($"weaponPickupPrefab '{pickupPrefab.name}' is missing WeaponPickup.cs.");
+                continue;
+            }
+
+            wp.SetWeapon(chosen);
+        }
+    }
+
+    private void SpawnAmmoOnce()
+    {
+        SpawnAmmoFromParent(ammoSpawnsParent, ammoPrefabs);
+    }
+
+    private void SpawnAmmoFromParent(Transform parent, GameObject[] prefabs)
+    {
+        if (parent == null) { Debug.LogError($"[{nameof(PickupSpawnManager)}] Missing parent for Ammo spawns."); return; }
+        if (prefabs == null || prefabs.Length == 0) { Debug.LogError($"[{nameof(PickupSpawnManager)}] No prefabs set for Ammo."); return; }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform spawn = parent.GetChild(i);
+            string spawnId = $"Ammo:{GetPath(spawn)}";
+
+            if (consumedSpawnIds.Contains(spawnId))
+                continue;
+
+            GameObject chosen = prefabs[Random.Range(0, prefabs.Length)];
+            GameObject instance = Instantiate(chosen, spawn.position, spawn.rotation, spawn);
+
+            var ap = instance.GetComponent<AmmoPickup>();
+            if (ap == null)
+            {
+                Debug.LogError($"Ammo prefab '{chosen.name}' is missing AmmoPickup.cs.");
+                continue;
+            }
+
+            ap.spawnManager = this;
+            ap.spawnId = spawnId;
+        }
     }
 }

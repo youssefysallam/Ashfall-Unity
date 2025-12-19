@@ -4,7 +4,7 @@ public class ThirdPersonCamera : MonoBehaviour
 {
     public Transform target;
 
-    [Header("Distance / Framing (GTA-ish)")]
+    [Header("Distance / Framing")]
     public float distance = 2.4f;
     public float height = 1.6f;
     public Vector3 shoulderOffset = new Vector3(0.6f, 0f, 0f); // right shoulder

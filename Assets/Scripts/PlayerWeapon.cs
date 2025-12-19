@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class PlayerWeapon : MonoBehaviour
@@ -6,12 +7,12 @@ public class PlayerWeapon : MonoBehaviour
     [Header("Attach")]
     [SerializeField] private Transform weaponHolder;
     [SerializeField] private Camera aimCamera;
-    [SerializeField] private AudioSource sfxSource;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
     [SerializeField] private string adsButton = "Fire2";
     [SerializeField] private string fireButton = "Fire1";
+    [SerializeField] private KeyCode reloadKey = KeyCode.R;
 
     [Header("Hit")]
     [SerializeField] private LayerMask hitMask = ~0;
@@ -20,14 +21,37 @@ public class PlayerWeapon : MonoBehaviour
     [SerializeField] private GameObject currentWeapon;
     [SerializeField] private WeaponStats currentStats;
     [SerializeField] private ParticleSystem muzzleFlash;
+
     [Header("Melee")]
     [SerializeField] private float meleeCooldown = 0.55f;
     [SerializeField] private float meleeRadius = 0.85f;
-
     private float meleeTimer;
+
+    [Header("Audio")]
+    [SerializeField] private AudioSource sfxSource;
+
+    [Tooltip("Fallback pistol shot if WeaponStats.shotClip is not set.")]
+    [SerializeField] private AudioClip pistolShot;
+
+    [Tooltip("Fallback rifle shot if WeaponStats.shotClip is not set.")]
+    [SerializeField] private AudioClip rifleShot;
+
+    [Tooltip("Global reload sound used if WeaponStats.reloadClip is not set.")]
+    [SerializeField] private AudioClip reloadClip;
+
+    [Tooltip("Global empty-mag click used for all guns when trying to fire at 0 ammo.")]
+    [SerializeField] private AudioClip emptyClip;
+
+    [Header("Ammo (guns only)")]
+    [SerializeField] private AmmoUI ammoUI;
+    [SerializeField] private bool autoReloadWhenEmpty = false;
 
     private float fireTimer;
     private Collider[] selfColliders;
+
+    private int ammoInMag;
+    private int ammoReserve;
+    private bool isReloading;
 
     private void Awake()
     {
@@ -53,18 +77,24 @@ public class PlayerWeapon : MonoBehaviour
             animator.SetBool("ADS", ads);
         }
 
-        if (Input.GetButtonDown(fireButton))
+        if (currentStats == null)
         {
-            if (currentStats == null)
+            if (ammoUI != null) ammoUI.SetVisible(false);
+
+            if (Input.GetButtonDown(fireButton))
             {
                 if (animator != null) animator.SetTrigger("Punch");
-                return;
             }
 
-            if (currentStats.type == WeaponType.Melee)
-            {
-                Debug.Log("[MELEE] Triggered melee input");
+            return;
+        }
 
+        if (currentStats.type == WeaponType.Melee)
+        {
+            if (ammoUI != null) ammoUI.SetVisible(false);
+
+            if (Input.GetButtonDown(fireButton))
+            {
                 if (animator != null) animator.SetTrigger("Melee");
 
                 if (meleeTimer <= 0f)
@@ -72,21 +102,41 @@ public class PlayerWeapon : MonoBehaviour
                     meleeTimer = meleeCooldown;
                     DoMeleeHit();
                 }
-
-                return;
             }
 
+            return;
         }
-
-        if (currentStats == null) return;
 
         if (currentStats.type == WeaponType.Gun)
         {
+            if (ammoUI != null) ammoUI.SetVisible(true);
+
+            if (Input.GetKeyDown(reloadKey))
+            {
+                TryReload();
+            }
+
             bool wantsFire = currentStats.automatic ? Input.GetButton(fireButton) : Input.GetButtonDown(fireButton);
 
             if (wantsFire && fireTimer <= 0f)
             {
                 fireTimer = Mathf.Max(0.01f, currentStats.fireRate);
+
+                if (isReloading)
+                    return;
+
+                if (ammoInMag <= 0)
+                {
+                    PlayEmptyClick();
+
+                    if (autoReloadWhenEmpty)
+                        TryReload();
+
+                    return;
+                }
+
+                ammoInMag--;
+                UpdateAmmoUI();
                 ShootGun();
             }
         }
@@ -128,6 +178,24 @@ public class PlayerWeapon : MonoBehaviour
                 animator.SetBool("HasPistol", false);
                 animator.SetBool("HasRifle", false);
             }
+
+            animator.SetBool("ADS", false);
+        }
+
+        isReloading = false;
+
+        if (stats.type == WeaponType.Gun)
+        {
+            int magSize = Mathf.Max(1, stats.magazineSize);
+            ammoInMag = magSize;
+            ammoReserve = Mathf.Max(0, stats.maxReserveAmmo);
+            UpdateAmmoUI();
+        }
+        else
+        {
+            ammoInMag = 0;
+            ammoReserve = 0;
+            if (ammoUI != null) ammoUI.SetVisible(false);
         }
     }
 
@@ -142,12 +210,66 @@ public class PlayerWeapon : MonoBehaviour
         currentStats = null;
         muzzleFlash = null;
 
+        ammoInMag = 0;
+        ammoReserve = 0;
+        isReloading = false;
+
+        if (ammoUI != null) ammoUI.SetVisible(false);
+
         if (animator != null)
         {
             animator.SetBool("HasPistol", false);
             animator.SetBool("HasRifle", false);
             animator.SetBool("ADS", false);
         }
+    }
+
+    private void TryReload()
+    {
+        if (isReloading) return;
+        if (currentStats == null || currentStats.type != WeaponType.Gun) return;
+
+        int magSize = Mathf.Max(1, currentStats.magazineSize);
+        if (ammoInMag >= magSize) return;
+        if (ammoReserve <= 0) return;
+
+        StartCoroutine(ReloadRoutine(magSize));
+    }
+
+    private IEnumerator ReloadRoutine(int magSize)
+    {
+        isReloading = true;
+
+        PlayReload();
+
+        float t = Mathf.Max(0.05f, currentStats != null ? currentStats.reloadTime : 1.2f);
+        yield return new WaitForSeconds(t);
+
+        int needed = magSize - ammoInMag;
+        int take = Mathf.Min(needed, ammoReserve);
+
+        ammoInMag += take;
+        ammoReserve -= take;
+
+        isReloading = false;
+        UpdateAmmoUI();
+    }
+
+    private void UpdateAmmoUI()
+    {
+        if (ammoUI == null)
+            return;
+
+        if (currentStats == null || currentStats.type != WeaponType.Gun)
+        {
+            ammoUI.SetVisible(false);
+            return;
+        }
+
+        ammoUI.SetVisible(true);
+        int magSize = Mathf.Max(1, currentStats.magazineSize);
+        ammoUI.SetWeapon(currentStats);
+        ammoUI.SetAmmo(ammoInMag, ammoReserve, magSize);
     }
 
     private void ShootGun()
@@ -163,10 +285,7 @@ public class PlayerWeapon : MonoBehaviour
             muzzleFlash.Play(true);
         }
 
-        if (sfxSource != null && currentStats != null && currentStats.shotClip != null)
-        {
-            sfxSource.PlayOneShot(currentStats.shotClip);
-        }
+        PlayShot();
 
         if (aimCamera == null || currentStats == null) return;
 
@@ -194,6 +313,38 @@ public class PlayerWeapon : MonoBehaviour
         }
     }
 
+    private void PlayShot()
+    {
+        if (sfxSource == null || currentStats == null) return;
+
+        AudioClip clip = currentStats.shotClip;
+
+        if (clip == null)
+        {
+            bool isPistol = currentStats.gunAnimSet == GunAnimSet.Pistol;
+            clip = isPistol ? pistolShot : rifleShot;
+        }
+
+        if (clip != null)
+            sfxSource.PlayOneShot(clip);
+    }
+
+    private void PlayReload()
+    {
+        if (sfxSource == null || currentStats == null) return;
+
+        AudioClip clip = currentStats.reloadClip != null ? currentStats.reloadClip : reloadClip;
+        if (clip != null)
+            sfxSource.PlayOneShot(clip);
+    }
+
+    private void PlayEmptyClick()
+    {
+        if (sfxSource == null) return;
+        if (emptyClip != null)
+            sfxSource.PlayOneShot(emptyClip);
+    }
+
     private bool IsSelfCollider(Collider col)
     {
         if (col == null || selfColliders == null) return false;
@@ -209,16 +360,10 @@ public class PlayerWeapon : MonoBehaviour
     private void DoMeleeHit()
     {
         if (currentStats == null || currentStats.type != WeaponType.Melee)
-        {
-            Debug.Log("[MELEE] Abort: no melee stats");
             return;
-        }
 
         if (aimCamera == null)
-        {
-            Debug.Log("[MELEE] Abort: no aimCamera");
             return;
-        }
 
         float range = Mathf.Max(0.5f, currentStats.meleeRange);
         int dmg = Mathf.Max(0, currentStats.meleeDamage);
@@ -232,16 +377,10 @@ public class PlayerWeapon : MonoBehaviour
             origin,
             meleeRadius,
             dir,
-            currentStats.meleeRange,
+            range,
             ~0,
             QueryTriggerInteraction.Collide
         );
-
-        Debug.Log($"[MELEE] SphereCast origin={origin} dir={dir} range={range} dmg={dmg}");
-
-        Debug.DrawRay(origin, dir * currentStats.meleeRange, Color.green, 1f);
-
-        Debug.Log($"[MELEE] Hits found: {(hits == null ? 0 : hits.Length)}");
 
         if (hits == null || hits.Length == 0) return;
 
@@ -250,22 +389,40 @@ public class PlayerWeapon : MonoBehaviour
         for (int i = 0; i < hits.Length; i++)
         {
             var hit = hits[i];
-
-            Debug.Log($"[MELEE] Hit {hit.collider.name} (layer={LayerMask.LayerToName(hit.collider.gameObject.layer)})");
-
             if (IsSelfCollider(hit.collider))
-            {
-                Debug.Log("[MELEE] Skipped self collider");
                 continue;
-            }
 
             ZombieHealth zh = hit.collider.GetComponentInParent<ZombieHealth>();
             if (zh != null)
             {
-                Debug.Log($"[MELEE] DAMAGING zombie for {dmg}");
                 zh.TakeDamage(dmg);
                 break;
             }
         }
+    }
+
+    public bool TryAddReserveAmmo(int amount)
+    {
+        if (currentStats == null) return false;
+        if (currentStats.type != WeaponType.Gun) return false;
+
+        int maxReserve = Mathf.Max(0, currentStats.maxReserveAmmo);
+        if (maxReserve <= 0) return false;
+
+        int before = ammoReserve;
+        ammoReserve = Mathf.Clamp(ammoReserve + Mathf.Max(0, amount), 0, maxReserve);
+
+        if (ammoReserve == before) return false;
+
+        UpdateAmmoUI();
+        return true;
+    }
+
+    public (int inMag, int reserve, int magSize) GetAmmoState()
+    {
+        if (currentStats == null || currentStats.type != WeaponType.Gun)
+            return (0, 0, 0);
+
+        return (ammoInMag, ammoReserve, Mathf.Max(1, currentStats.magazineSize));
     }
 }

@@ -15,6 +15,9 @@ public class SaveLoadManager : MonoBehaviour
     private const string KEY_HUNGER = "SF_HUNGER";
     private const string KEY_OXYGEN = "SF_OXYGEN";
 
+    private const string KEY_XP_LEVEL = "SF_XP_LEVEL";
+    private const string KEY_XP_IN_LEVEL = "SF_XP_IN_LEVEL";
+
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -39,6 +42,8 @@ public class SaveLoadManager : MonoBehaviour
         PlayerPrefs.DeleteKey(KEY_HEALTH);
         PlayerPrefs.DeleteKey(KEY_HUNGER);
         PlayerPrefs.DeleteKey(KEY_OXYGEN);
+        PlayerPrefs.DeleteKey(KEY_XP_LEVEL);
+        PlayerPrefs.DeleteKey(KEY_XP_IN_LEVEL);
         PlayerPrefs.Save();
     }
 
@@ -46,6 +51,7 @@ public class SaveLoadManager : MonoBehaviour
     {
         var gm = GameManager.Instance;
         var ps = FindFirstObjectByType<PlayerStats>();
+        var xp = XPManager.Instance != null ? XPManager.Instance : FindFirstObjectByType<XPManager>();
 
         if (gm == null || ps == null)
         {
@@ -59,6 +65,12 @@ public class SaveLoadManager : MonoBehaviour
         PlayerPrefs.SetFloat(KEY_HEALTH, ps.Health);
         PlayerPrefs.SetFloat(KEY_HUNGER, ps.Hunger);
         PlayerPrefs.SetFloat(KEY_OXYGEN, ps.Oxygen);
+
+        if (xp != null)
+        {
+            PlayerPrefs.SetInt(KEY_XP_LEVEL, xp.Level);
+            PlayerPrefs.SetInt(KEY_XP_IN_LEVEL, xp.XpInLevel);
+        }
 
         PlayerPrefs.Save();
         Debug.Log("[SaveLoad] Saved.");
@@ -93,6 +105,7 @@ public class SaveLoadManager : MonoBehaviour
 
         var gm = GameManager.Instance;
         var ps = FindFirstObjectByType<PlayerStats>();
+        var xp = XPManager.Instance != null ? XPManager.Instance : FindFirstObjectByType<XPManager>();
 
         if (gm == null || ps == null)
         {
@@ -139,6 +152,13 @@ public class SaveLoadManager : MonoBehaviour
         if (hField != null) hField.SetValue(ps, h);
         if (huField != null) huField.SetValue(ps, hu);
         if (oxField != null) oxField.SetValue(ps, ox);
+
+        if (xp != null)
+        {
+            int savedLevel = PlayerPrefs.GetInt(KEY_XP_LEVEL, xp.Level);
+            int savedXpInLevel = PlayerPrefs.GetInt(KEY_XP_IN_LEVEL, xp.XpInLevel);
+            xp.SetProgress(savedLevel, savedXpInLevel);
+        }
 
         Debug.Log("[SaveLoad] Loaded and applied.");
     }

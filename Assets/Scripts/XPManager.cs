@@ -103,6 +103,13 @@ public class XPManager : MonoBehaviour
         OnXPChanged?.Invoke();
     }
 
+    public void SetProgress(int newLevel, int newXpInLevel)
+    {
+        level = Mathf.Max(1, newLevel);
+        xpInLevel = Mathf.Max(0, newXpInLevel);
+        OnXPChanged?.Invoke();
+    }
+
     public void ResetProgress()
     {
         level = 1;

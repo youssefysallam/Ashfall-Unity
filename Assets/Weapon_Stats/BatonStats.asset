@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 646e05225c7d50d4c9933ec71ffaa7c7, type: 3}
   m_Name: BatonStats
   m_EditorClassIdentifier: Assembly-CSharp::WeaponStats
+  gunAnimSet: 0
   displayName: Police Baton
   type: 1
   weaponPrefab: {fileID: 1402644178857166, guid: 4deca74d46c275b40b3255680aa23aff, type: 3}
@@ -21,5 +22,12 @@ MonoBehaviour:
   allowADS: 0
   automatic: 0
   shotClip: {fileID: 0}
+  magazineSize: 30
+  maxReserveAmmo: 120
+  reloadTime: 1.6
+  reloadClip: {fileID: 0}
+  weaponIcon: {fileID: 21300000, guid: 4d25fa3b205ab474d875934301c5c8ff, type: 3}
   meleeDamage: 23
   meleeRange: 2.2
+  localPosOffset: {x: 0, y: 0, z: 0}
+  localRotOffset: {x: 0, y: 0, z: 0}

@@ -24,7 +24,6 @@ public class FallDamage : MonoBehaviour
 
     void Update()
     {
-        // Approx vertical velocity using position delta
         float yVel = (transform.position.y - _lastY) / Mathf.Max(Time.deltaTime, 0.0001f);
         _lastY = transform.position.y;
 

@@ -31,6 +31,14 @@ public class WeaponStats : ScriptableObject
     public bool allowADS = true;
     public bool automatic = true;
     public AudioClip shotClip;
+    
+    [Header("Ammo Settings (Guns Only)")]
+    public int magazineSize = 30;
+    public int maxReserveAmmo = 120;
+    public float reloadTime = 1.6f;
+    public AudioClip reloadClip;
+    public Sprite weaponIcon;
+
 
     [Header("Melee Settings")]
     public int meleeDamage = 25;

@@ -26,7 +26,7 @@ public class DeathUI : MonoBehaviour
 
         if (root != null) root.SetActive(true);
 
-        Time.timeScale = 0f;
+        Time.timeScale = 1f;
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -60,5 +60,10 @@ public class DeathUI : MonoBehaviour
             SaveLoadManager.Instance.ReturnToMainMenu();
         else
             SceneManager.LoadScene("Boot");
+    }
+
+    public void QuitGame()
+    {
+        Application.Quit();
     }
 }

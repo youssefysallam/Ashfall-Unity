@@ -5,6 +5,10 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
+    [Header("Scenes")]
+    [SerializeField] private string gameplaySceneName = "Ashfall_City";
+    [SerializeField] private string deathSceneName = "Death";
+
     [Header("Day/Wave Settings")]
     public int CurrentDay { get; private set; } = 1;
 
@@ -33,12 +37,6 @@ public class GameManager : MonoBehaviour
     private bool dayActive;
     private float intermissionTimer;
 
-    void Start()
-    {
-        if (SceneManager.GetActiveScene().name == "Boot")
-            SceneManager.LoadScene("Ashfall_City");
-    }
-
     void Awake()
     {
         if (Instance != null && Instance != this)
@@ -51,22 +49,36 @@ public class GameManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
 
         SceneManager.sceneLoaded += OnSceneLoaded;
+
+        ZombieHealth.AnyZombieDied += OnAnyZombieDied;
     }
 
     void OnDestroy()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
+
+        ZombieHealth.AnyZombieDied -= OnAnyZombieDied;
+
+        if (playerStats != null)
+            playerStats.OnPlayerDied -= HandlePlayerDeath;
     }
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         if (scene.name == "Boot") return;
 
+        if (scene.name == deathSceneName)
+        {
+            Time.timeScale = 1f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
         if (playerStats != null)
             playerStats.OnPlayerDied -= HandlePlayerDeath;
 
         playerStats = FindFirstObjectByType<PlayerStats>();
-
         if (playerStats != null)
             playerStats.OnPlayerDied += HandlePlayerDeath;
 
@@ -120,6 +132,9 @@ public class GameManager : MonoBehaviour
         intermissionTimer = intermissionSeconds;
 
         CurrentDay++;
+        if (SaveLoadManager.Instance != null)
+            SaveLoadManager.Instance.SaveGame();
+
         OnNewDay();
 
         Debug.Log($"[Day/Wave] Day cleared. Next Day={CurrentDay} in {intermissionSeconds:0.0}s");
@@ -158,12 +173,18 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void OnAnyZombieDied(ZombieHealth zh)
+    {
+        RunStats.zombiesKilled++;
+        NotifyZombieDied();
+    }
+
     void HandlePlayerDeath()
     {
         if (isDead) return;
         isDead = true;
 
-        int dayReached = CurrentDay;
+        RunStats.dayReached = CurrentDay;
 
         CurrentDay = 1;
         zombiesSpawnedThisDay = 0;
@@ -171,23 +192,12 @@ public class GameManager : MonoBehaviour
         dayActive = false;
         intermissionTimer = 0f;
 
-        if (deathUI != null)
-        {
-            string summary = BuildRunSummary(dayReached);
-            deathUI.Show(dayReached, summary);
-        }
-    }
+        Time.timeScale = 1f;
 
-    string BuildRunSummary(int dayReached)
-    {
-        if (playerStats == null)
-            return $"Reached Day {dayReached}";
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
-        return
-            $"Reached Day: {dayReached}\n" +
-            $"Health: {playerStats.Health:0}\n" +
-            $"Hunger: {playerStats.Hunger:0}\n" +
-            $"Oxygen: {playerStats.Oxygen:0}\n";
+        SceneManager.LoadScene(deathSceneName);
     }
 
     public float ZombieDamageMultiplier()
